@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "version": 1,
+    "description": "example nested config for rows_at='servers'"
+  },
+  "servers": [
+    {"id": 1, "host": "web-1", "port": 80},
+    {"id": 2, "host": "web-2", "port": 443}
+  ]
+}

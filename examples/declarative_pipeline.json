@@ -1,0 +1,9 @@
+{
+  "source": {"path": "examples/clients.csv", "key": "id"},
+  "steps": [
+    {"op": "filter", "field": "country", "cmp": "==", "value": "FR"},
+    {"op": "rename", "mapping": {"customer": "name"}},
+    {"op": "map", "field": "price", "transform": "scale", "factor": 1.2},
+    {"op": "sort", "field": "customer"}
+  ]
+}
