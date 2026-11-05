@@ -14,7 +14,7 @@ from reflet.lens import ConflictPolicy
 from reflet.pipeline import Pipeline, Source
 from reflet.view import Change, FieldProxy, JournalEntry, Row, View
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "Source",

@@ -6,6 +6,7 @@ from collections.abc import Callable, Sequence
 from functools import reduce
 from typing import Any
 
+from reflet._render import render_table
 from reflet.lens import ConflictPolicy, IdentityLens, Lens
 from reflet.lenses import (
     AggregateLens,
@@ -70,6 +71,10 @@ class Pipeline:
         return Pipeline(
             self.backend, (*self.lenses, lens), self.validators, self.tombstone_field
         )
+
+    def __repr__(self) -> str:
+        lens_names = ", ".join(lens.name for lens in self.lenses) or "none"
+        return f"Pipeline({self.backend.path!r}, lenses=[{lens_names}])"
 
     def filter(
         self, predicate: Callable[[RowView], bool], defaults: dict[str, Any] | None = None
@@ -186,6 +191,11 @@ class Pipeline:
             validators         = self.validators,
             tombstone_field    = self.tombstone_field,
         )
+
+    def preview(self, n: int = 5) -> None:
+        """Run the pipeline and print the first `n` rows as a table — a quick
+        look without writing a loop."""
+        print(render_table(self.run().to_dicts(), limit=n))
 
 
 def Source(

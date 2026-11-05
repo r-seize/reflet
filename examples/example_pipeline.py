@@ -7,7 +7,9 @@ Run it directly:
 Or inspect it with the CLI:
 
     python -m reflet show examples/example_pipeline.py
-    python -m reflet why examples/example_pipeline.py 0 name
+    python -m reflet show examples/example_pipeline.py --json
+    python -m reflet why examples/example_pipeline.py 0 customer
+    python -m reflet fields examples/example_pipeline.py
 """
 
 import shutil
@@ -58,6 +60,16 @@ def _run_demo(demo_pipeline: rf.Pipeline, scratch_csv: str) -> None:
     print()
     print("-- provenance of that edited cell --")
     print(f"  {view[0].customer.why()}")
+
+    print()
+    print("-- ergonomics: repr(), .rows, .to_dicts(), and the context manager --")
+    print(f"  {demo_pipeline!r}")
+    print(f"  {view!r}")
+    print(f"  view.rows[0] -> {view.rows[0]}")
+    print(f"  view.to_dicts()[0] -> {view.to_dicts()[0]}")
+    with rf.Source(scratch_csv).filter(lambda r: r.country == "FR").run() as ctx_view:
+        ctx_view[0].name = "Lefevre"
+    print("  `with ...run() as view:` synced automatically on exit")
 
 
 if __name__ == "__main__":

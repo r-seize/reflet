@@ -176,6 +176,27 @@ class View:
     def __iter__(self) -> Iterator[Row]:
         return (Row(self, i) for i in range(len(self._table)))
 
+    def __repr__(self) -> str:
+        fields = list(self._table[0].fields.keys()) if self._table else []
+        return f"View({len(self._table)} rows, fields={fields}, source={self._backend.path!r})"
+
+    def __enter__(self) -> View:
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+        """Calls `sync()` on a clean exit; an exception leaves pending edits untouched."""
+        if exc_type is None:
+            self.sync()
+
+    @property
+    def rows(self) -> tuple[Row, ...]:
+        """All rows as a tuple — sugar around iterating/indexing this View."""
+        return tuple(Row(self, i) for i in range(len(self._table)))
+
+    def to_dicts(self) -> list[dict[str, object]]:
+        """Export the current view as plain `list[dict]` (field name -> value)."""
+        return [{k: c.value for k, c in r.fields.items()} for r in self._table]
+
     @property
     def journal(self) -> tuple[JournalEntry, ...]:
         """The append-only history of every field write actually committed."""

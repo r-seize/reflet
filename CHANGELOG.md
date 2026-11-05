@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-05
+
+### Added
+
+- `Pipeline`/`View.__repr__`: a readable summary (lens chain; row count and
+  fields) instead of the default object repr.
+- `Pipeline.preview(n=5)`: run the pipeline and print the first `n` rows as
+  a table, without writing a loop.
+- `View` is now a context manager: `with pipeline.run() as view: ...` calls
+  `sync()` on a clean exit, and leaves edits unsynced if the block raises.
+- `View.rows`: all rows as a tuple, instead of iterating.
+- `View.to_dicts()`: the current view as plain `list[dict]`, for quick
+  inspection or interop with other libraries.
+- CLI: `python -m reflet --version`; `show --json` for scriptable output
+  alongside the existing tab-separated table; new `fields` subcommand to
+  list a view's available field names.
+- `reflet._render`: small shared TSV-rendering helper behind `preview()`
+  and the CLI's `show`, replacing duplicated formatting logic.
+
 ## [0.1.0] - 2026-11-01
 
 Initial public release.
@@ -43,5 +62,6 @@ Initial public release.
 - Zero runtime dependencies; typed, `mypy --strict` clean; tested on
   Python 3.10–3.13.
 
-[Unreleased]: https://github.com/r-seize/reflet/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/r-seize/reflet/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/r-seize/reflet/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/r-seize/reflet/releases/tag/v0.1.0

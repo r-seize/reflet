@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "reflet"
-version = "0.1.0"
+version = "0.1.1"
 description = "A bidirectional data transformation engine with built-in provenance."
 readme = "README.md"
 license = { text = "BSD-3-Clause" }

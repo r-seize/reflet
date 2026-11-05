@@ -167,6 +167,20 @@ view = pipeline.run()
 len(view)             # number of rows in the view
 view[2]                # a Row
 for row in view: ...   # iterate all rows
+view.rows              # all rows as a tuple, instead of iterating
+view.to_dicts()        # the current view as plain list[dict] — quick inspection, interop
+repr(pipeline)         # Pipeline('clients.csv', lenses=[filter(...), rename({...})])
+repr(view)             # View(3 rows, fields=['id', 'name', ...], source='clients.csv')
+pipeline.preview(5)    # run() + print the first 5 rows as a table, no loop needed
+```
+
+`View` is also a context manager: `sync()` runs automatically on a clean
+exit, and not at all if the `with` block raised.
+
+```python
+with pipeline.run() as view:
+    view[0].name = "Dupont"
+# synced here; an exception inside the block would leave the edit unsynced
 ```
 
 ### Provenance: `.why()`
@@ -566,13 +580,19 @@ All inherit from `reflet.RefletError`.
 ## CLI
 
 ```bash
+python -m reflet --version
 python -m reflet show examples/example_pipeline.py
+python -m reflet show examples/example_pipeline.py --json
 python -m reflet why examples/example_pipeline.py 0 customer
+python -m reflet fields examples/example_pipeline.py
 ```
 
-Both expect the script to define a module-level `pipeline = rf.Source(...)...`.
-`show` prints the resulting view as a table; `why` prints one field's
-provenance chain.
+`show`, `why`, and `fields` all expect the script to define a module-level
+`pipeline = rf.Source(...)...` (or a declarative `.json` spec). `show`
+prints the resulting view as a tab-separated table, or as JSON with
+`--json`; `why` prints one field's provenance chain; `fields` lists the
+view's available field names, one per line — handy for discovering a
+pipeline's shape without reading its source.
 
 ## Development
 
