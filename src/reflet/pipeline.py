@@ -33,7 +33,7 @@ _SQLITE_EXTENSIONS = (".sqlite", ".sqlite3", ".db")
 
 
 def _backend_for(
-    path: str, key: str | None, table: str | None, rows_at: str | None
+    path: str, key: str | None, table: str | None, rows_at: str | None, delimiter: str
 ) -> SourceBackend:
     if path.endswith(_SQLITE_EXTENSIONS):
         if table is None:
@@ -46,7 +46,7 @@ def _backend_for(
     if path.endswith(".csv"):
         if rows_at is not None:
             raise ValueError("rows_at= is only supported for JSON sources")
-        return CsvSource(path, key)
+        return CsvSource(path, key, delimiter)
     raise ValueError(
         f"unsupported source file: {path!r} (expected .csv, .json, or a SQLite file)"
     )
@@ -204,6 +204,7 @@ def Source(
     tombstone_field: str | None    = None,
     table: str | None              = None,
     rows_at: str | None            = None,
+    delimiter: str                 = ",",
 ) -> Pipeline:
     """Entry point: `rf.Source("clients.csv")` starts a pipeline over that file.
 
@@ -221,8 +222,14 @@ def Source(
     `rows_at` is a dotted path (e.g. `"servers"`) to the list to treat as the
     table, for a JSON file whose rows are nested inside a larger document
     rather than being the document itself.
+
+    `delimiter` is the field separator for a CSV source (e.g. `"\\t"` or
+    `";"`); ignored otherwise. A CSV source also transparently strips a
+    leading BOM on read, if present.
     """
-    return Pipeline(_backend_for(path, key, table, rows_at), tombstone_field=tombstone_field)
+    return Pipeline(
+        _backend_for(path, key, table, rows_at, delimiter), tombstone_field=tombstone_field
+    )
 
 
 __all__: Sequence[str] = ["Pipeline", "Source"]

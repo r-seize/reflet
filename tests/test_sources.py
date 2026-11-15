@@ -54,3 +54,24 @@ def test_atomic_write_cleans_up_on_failure(clients_csv: Path) -> None:
 
     assert clients_csv.read_text() == before  # original file untouched
     assert list(clients_csv.parent.glob(".reflet-*")) == []  # temp file cleaned up
+
+
+def test_csv_strips_leading_bom(tmp_path: Path) -> None:
+    path = tmp_path / "bom.csv"
+    path.write_bytes("id,name\n1,Martin\n".encode("utf-8-sig"))
+    view = rf.Source(str(path), key="id").run()
+    assert str(view[0].name) == "Martin"
+    # the "id" fieldname itself must not carry the BOM as a prefix
+    assert "id" in view.to_dicts()[0]
+
+
+def test_csv_custom_delimiter_read_and_write(tmp_path: Path) -> None:
+    path = tmp_path / "semi.csv"
+    path.write_text("id;name;price\n1;Martin;10\n2;Smith;20\n")
+    view = rf.Source(str(path), key="id", delimiter=";").run()
+    assert str(view[0].name) == "Martin"
+
+    view[0].name = "Dupont"
+    view.sync()
+    assert "1;Dupont;10" in path.read_text()
+    assert "," not in path.read_text()

@@ -11,9 +11,15 @@ from reflet.sources import SourceBackend, atomic_write, infer_scalar, render_sca
 
 
 class CsvSource(SourceBackend):
+    def __init__(self, path: str, key: str | None = None, delimiter: str = ",") -> None:
+        super().__init__(path, key)
+        self.delimiter = delimiter
+
     def read(self) -> Table:
-        with open(self.path, newline="", encoding="utf-8") as fh:
-            reader                = csv.DictReader(fh)
+        # utf-8-sig: transparently strips a leading BOM if present, and behaves
+        # exactly like utf-8 otherwise — safer default for files from Excel/Windows.
+        with open(self.path, newline="", encoding="utf-8-sig") as fh:
+            reader                = csv.DictReader(fh, delimiter=self.delimiter)
             self.fieldnames       = list(reader.fieldnames or [])
             table: Table          = []
             seen: set[RowId]      = set()
@@ -43,7 +49,7 @@ class CsvSource(SourceBackend):
         by_rid        = {r.rid: r for r in table}
 
         def _write(fh: IO[str]) -> None:
-            writer = csv.DictWriter(fh, fieldnames=fieldnames)
+            writer = csv.DictWriter(fh, fieldnames=fieldnames, delimiter=self.delimiter)
             writer.writeheader()
             for rid in self._order:
                 record = by_rid.get(rid)

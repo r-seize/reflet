@@ -62,6 +62,20 @@ def test_sync_force_bypasses_conflict(clients_csv: Path) -> None:
     assert "Changed" in clients_csv.read_text()
 
 
+def test_dry_run_never_raises_on_external_conflict(clients_csv: Path) -> None:
+    """A preview doesn't write anything, so there's nothing for an external
+    change to conflict with — dry_run=True must never raise SourceConflictError,
+    even when the source changed since it was read."""
+    view            = rf.Source(str(clients_csv), key="id").run()
+    view[0].name    = "Changed"
+    with open(clients_csv, "a") as fh:
+        fh.write("5,Extra,BE,99\n")
+
+    changes = view.sync(dry_run=True)
+    assert len(changes) == 1
+    assert "Changed" not in clients_csv.read_text()  # still just a preview
+
+
 def test_undo_reverts_uncommitted_edit(clients_csv: Path) -> None:
     view            = rf.Source(str(clients_csv), key="id").run()
     view[0].name    = "Changed"

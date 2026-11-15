@@ -74,3 +74,37 @@ def test_cli_show_json(tmp_path: Path, clients_csv: Path) -> None:
     rows = json.loads(result.stdout)
     assert len(rows) == 3
     assert {row["customer"] for row in rows} == {"Martin", "Durand", "Dupont"}
+
+
+def test_cli_missing_script_is_a_clean_error(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "reflet", "show", str(tmp_path / "nope.py")],
+        capture_output    = True,
+        text              = True,
+    )
+    assert result.returncode == 1
+    assert "Traceback" not in result.stderr
+    assert "error:" in result.stderr
+
+
+def test_cli_out_of_range_row_is_a_clean_error(tmp_path: Path, clients_csv: Path) -> None:
+    script = _write_script(tmp_path, clients_csv)
+    result = subprocess.run(
+        [sys.executable, "-m", "reflet", "why", str(script), "999", "customer"],
+        capture_output    = True,
+        text              = True,
+    )
+    assert result.returncode == 1
+    assert "Traceback" not in result.stderr
+    assert "error:" in result.stderr
+
+
+def test_cli_unknown_field_is_a_clean_error(tmp_path: Path, clients_csv: Path) -> None:
+    script = _write_script(tmp_path, clients_csv)
+    result = subprocess.run(
+        [sys.executable, "-m", "reflet", "why", str(script), "0", "bogus_field"],
+        capture_output    = True,
+        text              = True,
+    )
+    assert result.returncode == 1
+    assert "Traceback" not in result.stderr

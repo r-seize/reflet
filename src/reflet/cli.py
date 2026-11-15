@@ -10,6 +10,7 @@ import sys
 from reflet import __version__
 from reflet._render import render_table
 from reflet.declarative import pipeline_from_json
+from reflet.errors import RefletError
 from reflet.pipeline import Pipeline
 from reflet.view import View
 
@@ -31,7 +32,7 @@ def _run(script: str) -> View:
 def cmd_show(args: argparse.Namespace) -> None:
     rows = _run(args.script).to_dicts()
     if args.json:
-        print(json.dumps(rows, indent=2, default=str))
+        print(json.dumps(rows, indent=2, default=str, ensure_ascii=False))
     else:
         print(render_table(rows))
 
@@ -79,7 +80,11 @@ def main(argv: list[str] | None = None) -> None:
     fields_parser.set_defaults(func=cmd_fields)
 
     args = parser.parse_args(argv)
-    args.func(args)
+    try:
+        args.func(args)
+    except (RefletError, ValueError, OSError, IndexError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from None
 
 
 if __name__ == "__main__":

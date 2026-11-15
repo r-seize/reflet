@@ -61,6 +61,7 @@ view[0].customer.why()            # provenance chain
 - [Declarative pipelines](#declarative-pipelines)
 - [Sources](#sources)
 - [Errors](#errors)
+  - [Common mistakes](#common-mistakes)
 - [CLI](#cli)
 - [Development](#development)
 - [Compatibility](#compatibility)
@@ -69,7 +70,7 @@ view[0].customer.why()            # provenance chain
 
 ## Why
 
-Most data pipelines are one-way: source → transformation → result. Fix a
+Most data pipelines are one-way: source -> transformation -> result. Fix a
 mistake in the result and you're on your own to figure out where, in the
 source, that value actually came from — and re-applying the fix upstream
 means re-deriving, by hand, the inverse of every transformation in between.
@@ -138,7 +139,7 @@ Each is self-contained and safe to run as-is: `python examples/<name>.py`
 ### Lenses
 
 A `Lens` is the atomic unit of a pipeline: a pair of functions, `get` (source
-→ view) and `put` (edited view + original source → updated source). Lenses
+-> view) and `put` (edited view + original source -> updated source). Lenses
 compose with `>>`, and a `Pipeline` is just a chain of them in front of a
 `Source`. Composition follows the standard bidirectional-lens law:
 
@@ -169,13 +170,19 @@ view[2]                # a Row
 for row in view: ...   # iterate all rows
 view.rows              # all rows as a tuple, instead of iterating
 view.to_dicts()        # the current view as plain list[dict] — quick inspection, interop
+view.to_dicts(fields=["price", "name"])  # select/order just these columns
 repr(pipeline)         # Pipeline('clients.csv', lenses=[filter(...), rename({...})])
 repr(view)             # View(3 rows, fields=['id', 'name', ...], source='clients.csv')
 pipeline.preview(5)    # run() + print the first 5 rows as a table, no loop needed
+view.head(5)           # same, but on this already-run view — includes unsynced edits
 ```
 
 `View` is also a context manager: `sync()` runs automatically on a clean
-exit, and not at all if the `with` block raised.
+exit (including `return`/`break` out of the block — Python always runs
+`__exit__` on the way out, however control leaves), and not at all if the
+block raised. If `sync()` itself fails on exit (e.g. `SourceConflictError`),
+that exception propagates normally and your edits stay unsynced; calling
+`undo()`/`redo()` inside the block works exactly as it would outside one.
 
 ```python
 with pipeline.run() as view:
@@ -380,6 +387,17 @@ an opaque position.
 
 ## Dry-run, diff, and incremental sync
 
+The full cycle a real edit normally follows — **read, edit, preview, then
+commit**:
+
+```python
+view = rf.Source("clients.csv", key="id").run()  # read
+view[0].price = 42                               # edit (in memory only)
+view.diff()                                       # preview what sync() would write
+# [Change(clients.csv[1].price: 10 -> 42)]
+view.sync()                                       # commit: write it to clients.csv
+```
+
 Editing a `Row` mutates the view in place — nothing is written yet.
 `view.diff()` previews exactly what a sync would write, without touching
 anything:
@@ -551,17 +569,17 @@ closures for its callables, which have no general way back to a spec.
 
 | Format | Extension / option | Notes |
 | --- | --- | --- |
-| CSV | `.csv` | Values are best-effort type-inferred (`int`/`float`/`bool`/`str`) on read |
+| CSV | `.csv` | Values are best-effort type-inferred (`int`/`float`/`bool`/`str`) on read; a leading BOM is stripped transparently; `delimiter=";"` for non-comma files |
 | JSON | `.json` | A flat JSON array of objects |
 | Nested JSON | `.json`, `rows_at="servers"` | A list nested inside a larger document; everything else in the document is preserved byte-for-byte on write-back |
 | SQLite | `.sqlite`/`.sqlite3`/`.db`, `table="clients"` | Via the stdlib `sqlite3` module; write-back replaces the table's rows in one transaction |
 
 All support read and write-back, atomic writes (SQLite via its own
 transactions), and an optional `key=`. `rf.Source(path, key=None, table=None,
-rows_at=None, tombstone_field=None)` picks the backend from the file
-extension and these options. Not supported (zero-dependency constraint):
-YAML (no parser in the standard library) and TOML write-back (`tomllib` is
-read-only).
+rows_at=None, tombstone_field=None, delimiter=",")` picks the backend from
+the file extension and these options. Not supported (zero-dependency
+constraint): YAML (no parser in the standard library) and TOML write-back
+(`tomllib` is read-only).
 
 ## Errors
 
@@ -576,6 +594,25 @@ read-only).
 | `UnsupportedOperationError` | `insert()` through a `select()` or `aggregate()` |
 
 All inherit from `reflet.RefletError`.
+
+### Common mistakes
+
+- **`UnknownFieldError` on a field you just renamed away** — after
+  `.rename(customer="name")`, the view no longer has a `"name"` field; use
+  `"customer"`. This bites most often when copy-pasting a snippet that
+  predates a rename you added later in the chain.
+- **An edit that never reaches the file** — `row.field = value` only
+  mutates the view in memory; nothing is written until `view.sync()` (or
+  the `with pipeline.run() as view:` block exits cleanly). Check
+  `view.diff()` if you're unsure whether something is still pending.
+- **`ConflictError` on an `aggregate()` field** — the default
+  `ConflictPolicy.ERROR` refuses to guess which of several source rows an
+  edit to a shared group key should go to; pass `policy=rf.ConflictPolicy.FIRST`
+  (or `.LAST`) if you want it resolved automatically instead.
+- **`SourceConflictError` on `sync()`** — something else wrote to the file
+  since you called `run()`. `sync(force=True)` overwrites it with your
+  edits; re-running `pipeline.run()` reloads it instead (and drops your
+  pending edits).
 
 ## CLI
 
@@ -593,6 +630,11 @@ prints the resulting view as a tab-separated table, or as JSON with
 `--json`; `why` prints one field's provenance chain; `fields` lists the
 view's available field names, one per line — handy for discovering a
 pipeline's shape without reading its source.
+
+Expected failures (a missing script, an unknown field, a row index out of
+range, ...) print a one-line `error: ...` message to stderr and exit with
+status 1 — not a raw Python traceback. An unexpected bug still shows its
+full traceback, so it stays debuggable.
 
 ## Development
 

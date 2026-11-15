@@ -43,9 +43,11 @@ class SourceConflictError(RefletError):
 
     def __init__(self, path: str) -> None:
         super().__init__(
-            f"{path!r} changed on disk since it was read; pass force=True to "
-            "sync() to overwrite it anyway, or re-run the pipeline to pick up "
-            "the external changes first"
+            f"{path!r} changed on disk since it was read. Pick one: "
+            "sync(force=True) to overwrite the external change with your "
+            "edits; re-run the pipeline (pipeline.run()) to reload it and "
+            "lose your pending edits; or do nothing to leave both as they "
+            "are for now."
         )
         self.path = path
 

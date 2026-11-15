@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from reflet._render import render_table
 from reflet.errors import (
     InsertError,
     ReadOnlyFieldError,
@@ -193,9 +194,23 @@ class View:
         """All rows as a tuple — sugar around iterating/indexing this View."""
         return tuple(Row(self, i) for i in range(len(self._table)))
 
-    def to_dicts(self) -> list[dict[str, object]]:
-        """Export the current view as plain `list[dict]` (field name -> value)."""
-        return [{k: c.value for k, c in r.fields.items()} for r in self._table]
+    def to_dicts(self, fields: list[str] | None = None) -> list[dict[str, object]]:
+        """Export the current view as plain `list[dict]` (field name -> value).
+
+        `fields`, if given, selects and orders which columns are returned;
+        by default, every field is included in the view's own order.
+        """
+        if fields is None:
+            return [{k: c.value for k, c in r.fields.items()} for r in self._table]
+        return [{k: r.fields[k].value for k in fields} for r in self._table]
+
+    def head(self, n: int = 5) -> None:
+        """Print the first `n` rows of this (already-run) view as a table.
+
+        Unlike `Pipeline.preview()`, this shows the view as it currently
+        stands — including any pending, not-yet-synced edits.
+        """
+        print(render_table(self.to_dicts(), limit=n))
 
     @property
     def journal(self) -> tuple[JournalEntry, ...]:

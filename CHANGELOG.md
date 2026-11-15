@@ -5,7 +5,43 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.2] - 2026-11-15
+
+A reliability/consolidation release — no breaking changes.
+
+### Fixed
+
+- CSV sources now strip a leading BOM on read (`utf-8-sig`); previously a
+  BOM leaked into the first fieldname, breaking `key=`/field lookups on
+  files from Excel/Windows.
+- `python -m reflet` now reports expected failures (missing script,
+  unknown field, out-of-range row, ...) as a one-line `error: ...` message
+  on stderr with exit status 1, instead of a raw Python traceback.
+  Unexpected bugs still show their full traceback.
+- `show --json` emits literal UTF-8 characters (`ensure_ascii=False`)
+  instead of escaped `\uXXXX` sequences.
+- Clarified `SourceConflictError`'s message to spell out the three ways
+  to resolve it (`force=True`, reload, or do nothing for now).
+
+### Added
+
+- `Source(path, delimiter=",")` for CSV files that use a different field
+  separator (e.g. `;` or tab).
+- `View.head(n=5)`: prints the first `n` rows of the view as it currently
+  stands (including unsynced edits) — the counterpart to
+  `Pipeline.preview()`, which re-runs the pipeline fresh.
+- `View.to_dicts(fields=None)`: an optional `fields` argument to select
+  and order which columns are returned.
+- `Pipeline.preview()`/CLI `show`/`View.head()` now escape embedded
+  tabs/newlines and truncate cell values over 60 characters, so one row
+  always stays on one line.
+- Expanded test coverage: CSV BOM and custom delimiters, nested-JSON
+  sources with an empty row list, SQLite `NULL`/boolean-like values,
+  `dry_run=True` under an external conflict, and context-manager edge
+  cases (early `return`, `undo()`/`redo()` inside the block, `sync()`
+  raising on exit).
+- README: a condensed "read -> edit -> diff -> sync" walkthrough, and a
+  "Common mistakes" section next to the error reference.
 
 ## [0.1.1] - 2026-11-05
 
@@ -62,6 +98,7 @@ Initial public release.
 - Zero runtime dependencies; typed, `mypy --strict` clean; tested on
   Python 3.10–3.13.
 
-[Unreleased]: https://github.com/r-seize/reflet/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/r-seize/reflet/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/r-seize/reflet/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/r-seize/reflet/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/r-seize/reflet/releases/tag/v0.1.0

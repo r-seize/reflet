@@ -79,3 +79,36 @@ def test_json_path_source_rejects_non_list_path(tmp_path: Path) -> None:
     path.write_text(json.dumps({"meta": {"version": 1}}))
     with pytest.raises(ValueError, match="doesn't resolve to a list"):
         rf.Source(str(path), rows_at="meta").run()
+
+
+def test_json_path_source_handles_empty_list(tmp_path: Path) -> None:
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"meta": {"version": 1}, "servers": []}))
+    view = rf.Source(str(path), rows_at="servers").run()
+    assert len(view) == 0
+    assert view.diff() == []  # nothing pending, nothing to preview
+
+    doc = json.loads(path.read_text())
+    assert doc == {"meta": {"version": 1}, "servers": []}  # untouched, no edits made
+
+
+def test_sqlite_source_handles_null_and_boolean_like_values(tmp_path: Path) -> None:
+    path = tmp_path / "clients.sqlite"
+    conn = sqlite3.connect(path)
+    conn.execute("CREATE TABLE clients (id INTEGER, name TEXT, active INTEGER)")
+    conn.execute("INSERT INTO clients VALUES (1, NULL, 1)")
+    conn.execute("INSERT INTO clients VALUES (2, 'Smith', 0)")
+    conn.commit()
+    conn.close()
+
+    view = rf.Source(str(path), table="clients", key="id").run()
+    assert view[0].name.value is None
+    assert view[1].active.value == 0
+
+    view[0].name = "Martin"
+    view.sync()
+
+    conn = sqlite3.connect(path)
+    rows = conn.execute("SELECT id, name, active FROM clients ORDER BY id").fetchall()
+    conn.close()
+    assert rows == [(1, "Martin", 1), (2, "Smith", 0)]
